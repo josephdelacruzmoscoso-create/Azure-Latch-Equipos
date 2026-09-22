@@ -1,2 +1,784 @@
-# Azure-Latch-Equipos
-Matthew camello
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Z U R E L A C H</title>
+    <link rel="icon" type="image/png" href="./Logo.png">
+    <link rel="shortcut icon" type="image/png" href="./Logo.png">
+    <style>
+        /* --- ESTILOS GENERALES --- */
+        body {
+            margin: 0; padding: 10px; background-color: #050505; color: #d3d3d3;
+            font-family: 'Courier New', Courier, monospace; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; min-height: 100vh;
+            box-sizing: border-box; overflow-x: hidden;
+        }
+
+        h1, h2, h3 { letter-spacing: 4px; font-weight: normal; text-align: center; color: #b3b3b3; }
+        .subtitle { font-size: 0.9rem; color: #555; margin-bottom: 20px; letter-spacing: 2px; text-transform: lowercase; text-align: center; }
+
+        /* --- BOTONES --- */
+        button {
+            background-color: transparent; color: #888; border: 1px solid #444; padding: 12px 24px;
+            font-family: inherit; cursor: pointer; text-transform: uppercase; letter-spacing: 3px;
+            font-size: 0.85rem; position: relative; overflow: hidden; z-index: 2;
+            transition: all 0.3s ease; outline: none;
+        }
+        button::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 0%; height: 100%;
+            background-color: #d3d3d3; z-index: -1; transition: width 0.3s ease;
+        }
+        button:hover:not(:disabled) { color: #050505; border-color: #d3d3d3; font-weight: bold; }
+        button:hover:not(:disabled)::before { width: 100%; }
+        button:active:not(:disabled) { transform: scale(0.97); }
+        button:disabled { border-color: #1a1a1a; color: #333; cursor: not-allowed; }
+        button:disabled::before { display: none; }
+
+        /* --- PANTALLA DE CARGA --- */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #050505;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 999; transition: opacity 0.8s ease; padding: 20px; box-sizing: border-box;
+        }
+        .loading-title { font-size: clamp(1.5rem, 4.5vw, 2.8rem); margin-bottom: 20px; color: #888888; letter-spacing: 12px; font-weight: bold; }
+        .progress-bar-container { width: min(80vw, 500px); height: 10px; background-color: #111; margin-bottom: 12px; }
+        #progress-bar { width: 0%; height: 100%; background-color: #777; }
+        #progress-text { font-size: 0.75rem; color: #444; letter-spacing: 3px; }
+
+        /* --- LAYOUT PRINCIPAL --- */
+        .app-layout { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 30px; width: 100%; max-width: 1400px; }
+
+        /* --- PANEL LATERAL --- */
+        #stats-sidebar {
+            width: 0px; opacity: 0; overflow: hidden; background-color: #080808; border: 1px solid transparent;
+            display: flex; flex-direction: column; align-items: center; padding: 0; box-sizing: border-box;
+            transition: all 0.5s ease; flex-shrink: 0;
+        }
+        #stats-sidebar.visible { width: 320px; opacity: 1; border-color: #333; padding: 25px 20px; }
+        .sidebar-avatar-large { width: 150px; height: 150px; border: 1px solid #444; background-color: #fff; object-fit: cover; margin-bottom: 15px; }
+        .sidebar-title { font-size: 1rem; letter-spacing: 3px; margin-bottom: 15px; text-transform: uppercase; }
+        .stats-grid { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .stat-row { padding: 10px; background-color: #111; border: 1px solid #222; font-size: 0.8rem; }
+        .stat-header-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .interactive-stars { color: #444; font-size: 1.1rem; }
+        .interactive-stars span.lit { color: #d3d3d3; text-shadow: 0 0 8px rgba(211,211,211,0.5); }
+
+        /* --- CONTENEDOR APP --- */
+        #main-app { display: none; width: 100%; max-width: 950px; flex-direction: column; align-items: center; gap: 30px; opacity: 0; transition: opacity 1s ease; }
+        #main-app.visible { display: flex; opacity: 1; }
+
+        #mode-selection { display: none; flex-direction: column; align-items: center; opacity: 0; transition: opacity 0.8s ease; margin-top: 20px; }
+        #mode-selection.visible { opacity: 1; }
+        .mode-buttons { display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+
+        /* --- MODO: ARMAR FORMACIÓN (DRAG & DROP) --- */
+        #custom-section { width: 100%; display: none; flex-direction: column; align-items: center; opacity: 0; transition: opacity 0.8s; }
+        #custom-section.visible { opacity: 1; }
+        
+        .pitch-container {
+            width: 100%; max-width: 800px; height: 450px; background-color: #0c120e;
+            border: 2px solid #334433; position: relative; overflow: hidden; margin-bottom: 20px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+        }
+        /* Líneas de la cancha */
+        .pitch-line-center { position: absolute; top: 0; left: 50%; width: 2px; height: 100%; background: #334433; transform: translateX(-50%); }
+        .pitch-circle { position: absolute; top: 50%; left: 50%; width: 120px; height: 120px; border: 2px solid #334433; border-radius: 50%; transform: translate(-50%, -50%); }
+        .pitch-box-left { position: absolute; top: 50%; left: 0; width: 100px; height: 220px; border: 2px solid #334433; border-left: none; transform: translateY(-50%); }
+        .pitch-box-right { position: absolute; top: 50%; right: 0; width: 100px; height: 220px; border: 2px solid #334433; border-right: none; transform: translateY(-50%); }
+        
+        /* Zonas de posiciones */
+        .drop-zone {
+            position: absolute; transform: translate(-50%, -50%);
+            width: 55px; height: 55px; border: 2px dashed #445544; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.4); z-index: 10; transition: all 0.2s;
+        }
+        .drop-zone.hover { border-color: #00ffaa; background: rgba(0,255,170,0.1); transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 10px rgba(0,255,170,0.3); }
+        .drop-zone .pos-label { font-size: 0.7rem; color: #667766; font-weight: bold; pointer-events: none; letter-spacing: 1px; }
+        
+        /* Posiciones Equipo A (Izquierda) */
+        .pos-gk-a { left: 8%; top: 50%; }
+        .pos-lw-a { left: 28%; top: 20%; }
+        .pos-cm-a { left: 32%; top: 50%; }
+        .pos-rw-a { left: 28%; top: 80%; }
+        .pos-cf-a { left: 45%; top: 50%; }
+
+        /* Posiciones Equipo B (Derecha) */
+        .pos-gk-b { left: 92%; top: 50%; }
+        .pos-rw-b { left: 72%; top: 20%; }
+        .pos-cm-b { left: 68%; top: 50%; }
+        .pos-lw-b { left: 72%; top: 80%; }
+        .pos-cf-b { left: 55%; top: 50%; }
+
+        /* Banquillo */
+        .bench-container {
+            width: 100%; max-width: 800px; border: 1px solid #222; background: #0a0a0a;
+            padding: 15px; box-sizing: border-box; display: flex; flex-wrap: wrap;
+            gap: 15px; justify-content: center; min-height: 100px;
+        }
+
+        /* Jugadores arrastrables */
+        .draggable-player {
+            width: 55px; height: 55px; position: relative; cursor: grab;
+            transition: transform 0.2s; z-index: 11;
+        }
+        .draggable-player:active { cursor: grabbing; transform: scale(1.05); }
+        .draggable-player img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid transparent; transition: border-color 0.2s; pointer-events: none;}
+        .draggable-player.selected img { border-color: #00ffaa; box-shadow: 0 0 15px rgba(0,255,170,0.5); }
+        .draggable-player span {
+            position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+            font-size: 0.6rem; color: #888; white-space: nowrap; pointer-events: none;
+        }
+        
+        /* Ocultar nombre cuando están en la cancha */
+        .pitch-container .draggable-player { position: absolute; top: 0; left: 0; }
+        .pitch-container .draggable-player span { display: none; }
+
+        /* --- MODO ALEATORIO (RULETA) MEJORADO --- */
+        #roster-section { width: 100%; display: none; flex-direction: column; align-items: center; opacity: 0; transition: opacity 0.8s ease; }
+        #roster-section.visible-roster { opacity: 1; }
+        .roster-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 20px; width: 100%; margin: 20px 0; justify-items: center; }
+        .roster-card { width: 130px; background-color: #0a0a0a; border: 1px solid #222; display: flex; flex-direction: column; align-items: center; padding: 10px; cursor: pointer; transition: all 0.3s; opacity: 0.3; filter: grayscale(100%); border-radius: 6px; }
+        
+        /* Efecto neón al seleccionar en la grilla */
+        .roster-card.selected { border-color: #00ffaa; opacity: 1; filter: grayscale(0%); box-shadow: 0 0 15px rgba(0,255,170,0.15); }
+        .roster-card img { width: 100px; height: 100px; object-fit: cover; margin-bottom: 10px; background-color: #fff; border-radius: 4px; }
+        .roster-card span { font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; color: #ddd; }
+
+        #roulette-section { width: 100%; max-width: 800px; text-align: center; display: none; flex-direction: column; opacity: 0; transition: opacity 0.8s; }
+        #roulette-section.visible-roulette { opacity: 1; }
+        .top-controls { display: flex; flex-direction: column; gap: 15px; justify-content: center; align-items: center; border-bottom: 1px solid #222; padding-bottom: 20px; margin-bottom: 30px; position: relative; }
+        .roulette-buttons-group { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        @media (min-width: 700px) {
+            .top-controls { flex-direction: row; justify-content: space-between; align-items: center; }
+            .top-controls h2 { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; white-space: nowrap; }
+        }
+        
+        .roulette-wrapper { position: relative; margin: 20px auto; width: 100%; max-width: 750px; }
+        
+        /* Estilos neón para la ruleta */
+        .selector { position: absolute; top: -42px; left: 50%; transform: translateX(-50%); color: #00ffaa; font-size: 0.8rem; letter-spacing: 3px; z-index: 10; text-transform: uppercase; font-weight: bold; text-shadow: 0 0 10px rgba(0,255,170,0.5); }
+        .selector::after { content: '▼'; display: block; font-size: 1.4rem; margin-top: 4px; color: #00ffaa; text-shadow: 0 0 15px rgba(0,255,170,0.9); }
+        .roulette-window { width: 100%; height: 140px; overflow: hidden; position: relative; border: 1px solid #334433; background: #050805; box-shadow: inset 0 0 30px rgba(0,255,170,0.05); }
+        .roulette-window::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, rgba(5,8,5,1) 0%, rgba(5,8,5,0) 25%, rgba(5,8,5,0) 75%, rgba(5,8,5,1) 100%); z-index: 5; pointer-events: none; }
+        #roulette-strip { display: flex; height: 100%; width: max-content; }
+        .roulette-item { width: 140px; height: 120px; margin: 10px; box-sizing: border-box; background-color: #111; background-size: cover; background-position: center; border: 1px solid #222; opacity: 0.5; transition: opacity 0.3s; border-radius: 5px; }
+        .roulette-wrapper::after { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 144px; height: 124px; border: 2px solid #00ffaa; pointer-events: none; border-radius: 5px; box-shadow: 0 0 15px rgba(0,255,170,0.3), inset 0 0 10px rgba(0,255,170,0.2); }
+        
+        .result-section { margin-top: 30px; border-top: 1px solid #222; padding-top: 20px; display: flex; flex-direction: column; align-items: center; }
+        .result-section h3 { font-size: 0.8rem; color: #00ffaa; letter-spacing: 4px; text-shadow: 0 0 8px rgba(0,255,170,0.3); }
+        
+        /* Cuadro de ganador mejorado */
+        #selected-player { width: 130px; height: 130px; margin: 10px auto; background-color: #0a0a0a; border: 2px solid #00ffaa; background-size: cover; background-position: center; opacity: 0; transition: opacity 0.5s; border-radius: 8px; box-shadow: 0 0 25px rgba(0,255,170,0.4); }
+        #selected-name { margin-top: 10px; font-size: 1.2rem; opacity: 0; text-transform: uppercase; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); font-weight: bold; transition: opacity 0.5s; }
+
+        /* --- TABLA DE EQUIPOS FINAL --- */
+        #teams-section { width: 100%; max-width: 700px; border: 1px solid #333; display: none; flex-direction: column; background-color: #080808; opacity: 0; transition: all 0.8s; }
+        #teams-section.visible-team { opacity: 1; }
+        .teams-header { display: flex; border-bottom: 1px solid #333; background-color: #0a0a0a; }
+        .teams-header div { flex: 1; padding: 15px; text-align: center; color: #777; font-size: 0.9rem; letter-spacing: 4px; text-transform: uppercase; }
+        .teams-body { display: flex; flex-direction: column; }
+        @media (min-width: 650px) { .teams-body { flex-direction: row; min-height: 400px; } }
+        .team-col { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .team-member { display: flex; align-items: center; justify-content: space-between; padding: 10px; background-color: #0c0c0c; border: 1px solid #1a1a1a; }
+        .team-member-info { display: flex; align-items: center; gap: 15px; }
+        .team-member-text { display: flex; flex-direction: column; gap: 4px; }
+        .chem-badge { font-size: 0.6rem; letter-spacing: 1px; color: #00ffaa; border: 1px solid rgba(0,255,170,0.4); padding: 2px 6px; width: fit-content; text-transform: uppercase; }
+        .team-member img { width: 45px; height: 45px; border: 1px solid #444; background-color: #fff; object-fit: cover; }
+        
+        .btn-info { background: transparent; border: 1px solid #444; color: #888; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+        .chem-summary { margin-top: 15px; padding-top: 12px; border-top: 1px dashed #222; }
+        .chem-header { font-size: 0.75rem; letter-spacing: 2px; color: #777; text-transform: uppercase; margin-bottom: 8px; }
+        .chem-count { color: #00ffaa; }
+        .chem-list { display: flex; flex-direction: column; gap: 6px; }
+        .chem-pair { font-size: 0.7rem; letter-spacing: 1px; color: #aaa; background: #0c0c0c; border: 1px solid #1a1a1a; padding: 6px 10px; }
+        .chem-pair.chem-empty { color: #444; font-style: italic; }
+        .btn-info::before { display: none; }
+        .btn-info:hover { background-color: #d3d3d3; color: #050505; }
+        #final-controls { display: none; width: 100%; opacity: 0; transition: opacity 0.8s; margin-top: 20px; justify-content: center; }
+        #final-controls.visible { opacity: 1; }
+
+        @media (max-width: 768px) {
+            .app-layout { flex-direction: column; align-items: center; }
+            .pitch-container { height: 350px; }
+            .drop-zone { width: 45px; height: 45px; }
+            .draggable-player { width: 45px; height: 45px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="loading-title">A Z U R E L A C H</div>
+        <div class="subtitle">cargando base de datos...</div>
+        <div class="progress-bar-container"><div id="progress-bar"></div></div>
+        <div id="progress-text">0%</div>
+    </div>
+
+    <div class="app-layout">
+        
+        <div id="stats-sidebar">
+            <img id="sidebar-img" class="sidebar-avatar-large" src="" alt="Avatar">
+            <div id="sidebar-name" class="sidebar-title">---</div>
+            <div class="stats-grid">
+                <div class="stat-row"><div class="stat-header-row"><span>TIRO:</span><span id="stat-tiro-avg">0.0</span></div><div class="interactive-stars" id="stars-tiro"><span data-value="1">★</span><span data-value="2">★</span><span data-value="3">★</span><span data-value="4">★</span><span data-value="5">★</span></div></div>
+                <div class="stat-row"><div class="stat-header-row"><span>PASE:</span><span id="stat-pase-avg">0.0</span></div><div class="interactive-stars" id="stars-pase"><span data-value="1">★</span><span data-value="2">★</span><span data-value="3">★</span><span data-value="4">★</span><span data-value="5">★</span></div></div>
+                <div class="stat-row"><div class="stat-header-row"><span>REGATE:</span><span id="stat-regate-avg">0.0</span></div><div class="interactive-stars" id="stars-regate"><span data-value="1">★</span><span data-value="2">★</span><span data-value="3">★</span><span data-value="4">★</span><span data-value="5">★</span></div></div>
+                <div class="stat-row"><div class="stat-header-row"><span>EFECTIVIDAD:</span><span id="stat-efectividad-avg">0.0</span></div><div class="interactive-stars" id="stars-efectividad"><span data-value="1">★</span><span data-value="2">★</span><span data-value="3">★</span><span data-value="4">★</span><span data-value="5">★</span></div></div>
+            </div>
+            <button id="btn-close-sidebar" style="width: 100%;">Cerrar Panel</button>
+        </div>
+
+        <div id="main-app">
+            
+            <div id="mode-selection">
+                <h2>MODOS DE JUEGO</h2>
+                <div class="mode-buttons">
+                    <button id="btn-mode-random">Equipo Aleatorio (Ruleta)</button>
+                    <button id="btn-mode-custom">Armar Táctica (Manual)</button>
+                </div>
+            </div>
+
+            <!-- NUEVO MODO TÁCTICO DRAG & DROP -->
+            <div id="custom-section">
+                <h2>PIZARRA TÁCTICA</h2>
+                <div class="subtitle">Arrastra a los jugadores o haz clic para asignarlos</div>
+                
+                <div class="pitch-container" id="pitch-area">
+                    <!-- SVG para trazar líneas dinámicas de química -->
+                    <svg id="chemistry-lines" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;"></svg>
+                    
+                    <div class="pitch-line-center"></div>
+                    <div class="pitch-circle"></div>
+                    <div class="pitch-box-left"></div>
+                    <div class="pitch-box-right"></div>
+                    
+                    <!-- Zonas Equipo A -->
+                    <div class="drop-zone pos-gk-a" data-team="A"><span class="pos-label">GK</span></div>
+                    <div class="drop-zone pos-lw-a" data-team="A"><span class="pos-label">LW</span></div>
+                    <div class="drop-zone pos-cm-a" data-team="A"><span class="pos-label">CM</span></div>
+                    <div class="drop-zone pos-rw-a" data-team="A"><span class="pos-label">RW</span></div>
+                    <div class="drop-zone pos-cf-a" data-team="A"><span class="pos-label">CF</span></div>
+
+                    <!-- Zonas Equipo B -->
+                    <div class="drop-zone pos-gk-b" data-team="B"><span class="pos-label">GK</span></div>
+                    <div class="drop-zone pos-lw-b" data-team="B"><span class="pos-label">LW</span></div>
+                    <div class="drop-zone pos-cm-b" data-team="B"><span class="pos-label">CM</span></div>
+                    <div class="drop-zone pos-rw-b" data-team="B"><span class="pos-label">RW</span></div>
+                    <div class="drop-zone pos-cf-b" data-team="B"><span class="pos-label">CF</span></div>
+                </div>
+
+                <div class="subtitle" style="margin-bottom:10px;">BANQUILLO</div>
+                <div class="bench-container" id="bench-zone"></div>
+                
+                <button id="btn-play-custom" style="margin-top: 30px;" disabled>Confirmar Formación</button>
+            </div>
+
+            <div id="roster-section">
+                <h2>SELECCIÓN PARA RULETA</h2>
+                <div class="roster-grid" id="roster-grid"></div>
+                <button id="btn-confirm-roster">Iniciar Sorteo</button>
+            </div>
+
+            <div id="roulette-section">
+                <div class="top-controls">
+                    <div class="roulette-buttons-group">
+                        <button id="btn-spin">Girar</button>
+                        <button id="btn-skip" disabled>Saltar</button>
+                    </div>
+                    <h2>SELECCIÓN</h2>
+                </div>
+                <div class="roulette-wrapper">
+                    <div class="selector">target</div>
+                    <div class="roulette-window"><div id="roulette-strip"></div></div>
+                </div>
+                <div class="result-section">
+                    <h3>JUGADOR CONFIRMADO</h3>
+                    <div id="selected-player"></div>
+                    <div id="selected-name">---</div>
+                </div>
+            </div>
+
+            <div id="teams-section">
+                <div class="teams-header"><div>Equipo A</div><div>Equipo B</div></div>
+                <div class="teams-body">
+                    <div class="team-col" id="team-a-list"></div>
+                    <div class="team-col" id="team-b-list"></div>
+                </div>
+            </div>
+            
+            <div id="final-controls">
+                <button id="btn-reset">Volver al Menú</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const BIN_ID = "6aa59300ffd5d16053ff10d1"; 
+        const MASTER_KEY = "$2a$10$W90QlCShIN7G2rC2muRL10v3TG1Q502jIPgHhIKjyfDDignXWX4XG"; 
+        const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+        const defaultPlayers = [
+            { id: 1, name: "Matreisx", img: "ww/Matreisx.png", ratings: { tiro: [4], pase: [3], regate: [3], efectividad: [2] } },
+            { id: 2, name: "Chinito", img: "ww/Chinito.png", ratings: { tiro: [3], pase: [2], regate: [3], efectividad: [3] } },
+            { id: 3, name: "Sandaroi", img: "ww/Sandaroi.png", ratings: { tiro: [2], pase: [4], regate: [2], efectividad: [3] } },
+            { id: 4, name: "Jorky", img: "ww/Jorky.png", ratings: { tiro: [4], pase: [3], regate: [3], efectividad: [4] } },
+            { id: 5, name: "Melting", img: "ww/M3LT1NG.png", ratings: { tiro: [3], pase: [3], regate: [3], efectividad: [3] } },
+            { id: 6, name: "Litebot", img: "ww/Litebot.png", ratings: { tiro: [4], pase: [2], regate: [3], efectividad: [4] } },
+            { id: 7, name: "Doriloco", img: "ww/Doriloco4412.png", ratings: { tiro: [4], pase: [2], regate: [5], efectividad: [4] } }
+        ];
+
+        // --- SISTEMA DE QUÍMICA ENTRE JUGADORES ---
+        const chemistryPairs = [
+            ["Matreisx", "Melting"],
+            ["Matreisx", "Litebot"],
+            ["Melting", "Sandaroi"],
+            ["Melting", "Doriloco"],
+            ["Chinito", "Melting"],
+            ["Doriloco", "Sandaroi"],
+            ["Doriloco", "Litebot"],
+            ["Jorky", "Litebot"],
+            ["Jorky", "Doriloco"],
+            ["Litebot", "Sandaroi"]
+        ];
+
+        // Dibuja las líneas SVG en la cancha para el modo táctico
+        function updateChemistryLines() {
+            const svg = document.getElementById('chemistry-lines');
+            if (!svg) return;
+            svg.innerHTML = ''; 
+            
+            function drawLine(zone1, zone2) {
+                const r1 = zone1.getBoundingClientRect();
+                const r2 = zone2.getBoundingClientRect();
+                const cRect = svg.getBoundingClientRect();
+                
+                const x1 = r1.left + r1.width/2 - cRect.left;
+                const y1 = r1.top + r1.height/2 - cRect.top;
+                const x2 = r2.left + r2.width/2 - cRect.left;
+                const y2 = r2.top + r2.height/2 - cRect.top;
+                
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', '#00ffaa');
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('stroke-dasharray', '8, 6');
+                line.style.filter = 'drop-shadow(0px 0px 6px rgba(0,255,170,0.8))';
+                svg.appendChild(line);
+            }
+
+            // Evaluar química activa para los que están posicionados
+            ['A', 'B'].forEach(team => {
+                const teamZones = Array.from(document.querySelectorAll(`.drop-zone[data-team="${team}"]`));
+                const activePlayers = [];
+                
+                teamZones.forEach(zone => {
+                    const playerEl = zone.querySelector('.draggable-player');
+                    if (playerEl) {
+                        const player = allPlayers.find(p => p.id === parseInt(playerEl.dataset.id));
+                        if (player) activePlayers.push({ player, zone });
+                    }
+                });
+
+                for (let i = 0; i < activePlayers.length; i++) {
+                    for (let j = i + 1; j < activePlayers.length; j++) {
+                        const p1 = activePlayers[i].player.name;
+                        const p2 = activePlayers[j].player.name;
+                        
+                        const hasChem = chemistryPairs.some(pair => 
+                            (pair[0] === p1 && pair[1] === p2) || (pair[1] === p1 && pair[0] === p2)
+                        );
+                        
+                        if (hasChem) drawLine(activePlayers[i].zone, activePlayers[j].zone);
+                    }
+                }
+            });
+        }
+
+        // Calcula la química activa dentro de un equipo (lista de ids)
+        function computeChemistry(teamIds) {
+            const teamPlayers = teamIds.map(id => allPlayers.find(p => p.id == id)).filter(Boolean);
+            const activePairs = [];
+            const countByName = {};
+            chemistryPairs.forEach(([n1, n2]) => {
+                const p1 = teamPlayers.find(p => p.name === n1);
+                const p2 = teamPlayers.find(p => p.name === n2);
+                if (p1 && p2) {
+                    activePairs.push(`${p1.name} + ${p2.name}`);
+                    countByName[p1.name] = (countByName[p1.name] || 0) + 1;
+                    countByName[p2.name] = (countByName[p2.name] || 0) + 1;
+                }
+            });
+            return { activePairs, countByName };
+        }
+
+        function buildTeamMemberCard(player, chemCount) {
+            const badge = chemCount > 0 ? `<span class="chem-badge">QUÍMICA +${chemCount}</span>` : '';
+            return `<div class="team-member">
+                        <div class="team-member-info">
+                            <img src="${player.img}" alt="${player.name}">
+                            <div class="team-member-text">
+                                <span>${player.name}</span>
+                                ${badge}
+                            </div>
+                        </div>
+                        <button class="btn-info" onclick="openStats(${player.id})">i</button>
+                    </div>`;
+        }
+
+        function renderTeamColumn(containerEl, teamIds) {
+            containerEl.innerHTML = '';
+            const { activePairs, countByName } = computeChemistry(teamIds);
+            teamIds.forEach(id => {
+                const p = allPlayers.find(x => x.id == id);
+                if (!p) return;
+                containerEl.insertAdjacentHTML('beforeend', buildTeamMemberCard(p, countByName[p.name] || 0));
+            });
+            const chemListHtml = activePairs.length
+                ? activePairs.map(pair => `<div class="chem-pair">${pair}</div>`).join('')
+                : `<div class="chem-pair chem-empty">Sin química activa</div>`;
+            containerEl.insertAdjacentHTML('beforeend', `
+                <div class="chem-summary">
+                    <div class="chem-header">QUÍMICA ACTIVA <span class="chem-count">/ ${activePairs.length}</span></div>
+                    <div class="chem-list">${chemListHtml}</div>
+                </div>
+            `);
+        }
+
+        let allPlayers = []; let activePlayers = []; let unpickedIds = []; let currentSelectedPlayer = null;
+
+        const els = {
+            loading: document.getElementById('loading-screen'),
+            mainApp: document.getElementById('main-app'),
+            modeSelection: document.getElementById('mode-selection'),
+            customSection: document.getElementById('custom-section'),
+            benchZone: document.getElementById('bench-zone'),
+            btnPlayCustom: document.getElementById('btn-play-custom'),
+            rosterSection: document.getElementById('roster-section'),
+            rouletteSection: document.getElementById('roulette-section'),
+            teamsSection: document.getElementById('teams-section'),
+            finalControls: document.getElementById('final-controls'),
+            sidebar: document.getElementById('stats-sidebar')
+        };
+
+        // --- SISTEMA DE ARRANQUE ---
+        async function initApp() {
+            try {
+                let response = await fetch(API_URL, { headers: { "X-Master-Key": MASTER_KEY }, signal: AbortSignal.timeout(3000) });
+                let result = await response.json();
+                allPlayers = (result.record && result.record.length) ? result.record : defaultPlayers;
+            } catch (e) { allPlayers = defaultPlayers; }
+            
+            setTimeout(() => {
+                els.loading.style.opacity = '0';
+                setTimeout(() => {
+                    els.loading.style.display = 'none';
+                    els.mainApp.classList.add('visible');
+                    els.modeSelection.style.display = 'flex';
+                    setTimeout(() => els.modeSelection.classList.add('visible'), 50);
+                }, 800);
+            }, 1500);
+        }
+        initApp();
+
+        // --- LÓGICA MODO TÁCTICO HÍBRIDO (DRAG & CLICK) ---
+        let draggedPlayerId = null; let clickedPlayerEl = null;
+
+        document.getElementById('btn-mode-custom').addEventListener('click', () => {
+            switchView(els.modeSelection, els.customSection);
+            initTacticalBoard();
+            setTimeout(updateChemistryLines, 100); 
+        });
+
+        function initTacticalBoard() {
+            els.benchZone.innerHTML = '';
+            document.querySelectorAll('.pitch-container .drop-zone').forEach(z => {
+                const p = z.querySelector('.draggable-player');
+                if(p) p.remove();
+            });
+
+            allPlayers.forEach(player => {
+                const item = document.createElement('div');
+                item.className = 'draggable-player';
+                item.draggable = true;
+                item.dataset.id = player.id;
+                item.innerHTML = `<img src="${player.img}" alt="${player.name}"> <span>${player.name}</span>`;
+                
+                item.addEventListener('dragstart', (e) => {
+                    draggedPlayerId = player.id;
+                    if(clickedPlayerEl) clickedPlayerEl.classList.remove('selected');
+                    clickedPlayerEl = null;
+                });
+                item.addEventListener('dragend', () => { draggedPlayerId = null; checkFormationReady(); updateChemistryLines(); });
+                
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if(clickedPlayerEl === item) {
+                        item.classList.remove('selected');
+                        clickedPlayerEl = null;
+                    } else {
+                        if(clickedPlayerEl) clickedPlayerEl.classList.remove('selected');
+                        clickedPlayerEl = item;
+                        item.classList.add('selected');
+                    }
+                });
+
+                els.benchZone.appendChild(item);
+            });
+        }
+
+        document.querySelectorAll('.drop-zone, #bench-zone').forEach(zone => {
+            zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('hover'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('hover'));
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault(); zone.classList.remove('hover');
+                if (draggedPlayerId) {
+                    const el = document.querySelector(`.draggable-player[data-id='${draggedPlayerId}']`);
+                    handlePlayerPlacement(el, zone);
+                }
+            });
+
+            zone.addEventListener('click', () => {
+                if(clickedPlayerEl) {
+                    handlePlayerPlacement(clickedPlayerEl, zone);
+                    clickedPlayerEl.classList.remove('selected');
+                    clickedPlayerEl = null;
+                }
+            });
+        });
+
+        function handlePlayerPlacement(playerEl, targetZone) {
+            if (!playerEl) return;
+            if (targetZone.id !== 'bench-zone' && targetZone.querySelector('.draggable-player')) {
+                const existing = targetZone.querySelector('.draggable-player');
+                if (existing !== playerEl) els.benchZone.appendChild(existing);
+            }
+            targetZone.appendChild(playerEl);
+            checkFormationReady();
+            updateChemistryLines(); // Actualiza líneas al instante
+        }
+
+        function checkFormationReady() {
+            const teamA = document.querySelectorAll('.drop-zone[data-team="A"] .draggable-player').length;
+            const teamB = document.querySelectorAll('.drop-zone[data-team="B"] .draggable-player').length;
+            els.btnPlayCustom.disabled = !(teamA > 0 && teamB > 0);
+        }
+
+        els.btnPlayCustom.addEventListener('click', () => {
+            const teamAIds = Array.from(document.querySelectorAll('.drop-zone[data-team="A"] .draggable-player')).map(el => parseInt(el.dataset.id));
+            const teamBIds = Array.from(document.querySelectorAll('.drop-zone[data-team="B"] .draggable-player')).map(el => parseInt(el.dataset.id));
+
+            renderTeamColumn(document.getElementById('team-a-list'), teamAIds);
+            renderTeamColumn(document.getElementById('team-b-list'), teamBIds);
+
+            switchView(els.customSection, els.teamsSection);
+            els.finalControls.style.display = 'flex';
+            setTimeout(() => els.finalControls.classList.add('visible'), 50);
+        });
+
+        // --- LÓGICA MODO ALEATORIO (RULETA) ---
+        let isSpinning = false, spinTimeoutId = null, pendingWinner = null, pendingTargetIndex = -1;
+        const itemWidth = 160; let visibleWindowWidth = 750; let extendedPlayersList = [];
+        let teamAIds = []; let teamBIds = [];
+
+        const rosterGrid = document.getElementById('roster-grid');
+        const btnConfirmRoster = document.getElementById('btn-confirm-roster');
+        const strip = document.getElementById('roulette-strip');
+        const btnSpin = document.getElementById('btn-spin');
+        const btnSkip = document.getElementById('btn-skip');
+        const resultImg = document.getElementById('selected-player');
+        const resultName = document.getElementById('selected-name');
+
+        document.getElementById('btn-mode-random').addEventListener('click', () => {
+            switchView(els.modeSelection, els.rosterSection);
+            initRoster();
+        });
+
+        function initRoster() {
+            rosterGrid.innerHTML = '';
+            allPlayers.forEach(player => {
+                const card = document.createElement('div');
+                card.className = 'roster-card selected';
+                card.dataset.id = player.id;
+                card.innerHTML = `<img src="${player.img}" alt="${player.name}"><span>${player.name}</span>`;
+                card.addEventListener('click', () => card.classList.toggle('selected'));
+                rosterGrid.appendChild(card);
+            });
+        }
+
+        function setupRouletteData() {
+            const spinCycles = 10; extendedPlayersList = [];
+            for (let i = 0; i < spinCycles; i++) {
+                let shuffled = [...activePlayers].sort(() => Math.random() - 0.5);
+                extendedPlayersList = extendedPlayersList.concat(shuffled);
+            }
+            strip.innerHTML = '';
+            extendedPlayersList.forEach(player => {
+                const div = document.createElement('div');
+                div.className = 'roulette-item';
+                div.style.backgroundImage = `url('${player.img}'), linear-gradient(#fff, #fff)`;
+                strip.appendChild(div);
+            });
+        }
+
+        function resetRoulettePosition() {
+            const rouletteWrapper = document.querySelector('.roulette-wrapper');
+            if (rouletteWrapper) {
+                visibleWindowWidth = rouletteWrapper.offsetWidth;
+                const centerOffset = (visibleWindowWidth / 2) - (itemWidth / 2);
+                strip.style.transition = 'none';
+                strip.style.transform = `translateX(${centerOffset}px)`;
+                document.querySelectorAll('.roulette-item').forEach(item => item.style.opacity = '0.5');
+            }
+        }
+
+        btnConfirmRoster.addEventListener('click', () => {
+            const selectedCards = document.querySelectorAll('.roster-card.selected');
+            if (selectedCards.length < 2) { alert("SISTEMA: Requiere al menos 2 jugadores activos para iniciar la secuencia."); return; }
+            const selectedIds = Array.from(selectedCards).map(card => parseInt(card.dataset.id));
+            activePlayers = allPlayers.filter(p => selectedIds.includes(p.id));
+            unpickedIds = activePlayers.map(p => p.id);
+            teamAIds = []; teamBIds = [];
+            setupRouletteData();
+
+            switchView(els.rosterSection, els.rouletteSection);
+            setTimeout(resetRoulettePosition, 850);
+        });
+
+        function executeSpin() {
+            if (unpickedIds.length === 0 || isSpinning) return;
+            isSpinning = true; btnSpin.disabled = true; btnSkip.disabled = false;
+            resultImg.style.opacity = '0'; resultName.style.opacity = '0';
+
+            const randomIndex = Math.floor(Math.random() * unpickedIds.length);
+            const winnerId = unpickedIds[randomIndex];
+            unpickedIds.splice(randomIndex, 1);
+
+            const winner = activePlayers.find(p => p.id === winnerId);
+            pendingWinner = winner;
+
+            let targetIndex = -1;
+            const searchStartIndex = Math.floor(extendedPlayersList.length * 0.6);
+            for (let i = searchStartIndex; i < extendedPlayersList.length; i++) {
+                if (extendedPlayersList[i].id === winnerId) { targetIndex = i; break; }
+            }
+            if (targetIndex === -1) { targetIndex = extendedPlayersList.findIndex(p => p.id === winnerId); }
+            pendingTargetIndex = targetIndex;
+
+            const centerOffset = (visibleWindowWidth / 2) - (itemWidth / 2);
+            const targetX = -(targetIndex * itemWidth) + centerOffset;
+
+            strip.style.transition = 'transform 3.8s cubic-bezier(0.1, 0.9, 0.2, 1)';
+            strip.style.transform = `translateX(${targetX}px)`;
+
+            spinTimeoutId = setTimeout(() => { finalizeWinner(pendingWinner, pendingTargetIndex); }, 3900);
+        }
+
+        function finalizeWinner(winner, targetIndex) {
+            isSpinning = false; btnSkip.disabled = true;
+
+            const allItems = document.querySelectorAll('.roulette-item');
+            if (allItems[targetIndex]) { allItems[targetIndex].style.opacity = '1'; }
+
+            resultImg.style.backgroundImage = `url('${winner.img}')`;
+            resultImg.style.backgroundColor = '#fff';
+            resultName.innerText = winner.name;
+            resultImg.style.opacity = '1'; resultName.style.opacity = '1';
+
+            const isTeamA = teamAIds.length <= teamBIds.length;
+            if (isTeamA) { teamAIds.push(winner.id); } else { teamBIds.push(winner.id); }
+
+            if (unpickedIds.length > 0) {
+                btnSpin.disabled = false;
+            } else {
+                setTimeout(() => {
+                    switchView(els.rouletteSection, els.teamsSection);
+                    renderTeamColumn(document.getElementById('team-a-list'), teamAIds);
+                    renderTeamColumn(document.getElementById('team-b-list'), teamBIds);
+                    els.finalControls.style.display = 'flex';
+                    setTimeout(() => els.finalControls.classList.add('visible'), 50);
+                }, 1500);
+            }
+        }
+
+        btnSpin.addEventListener('click', executeSpin);
+
+        btnSkip.addEventListener('click', () => {
+            if (!isSpinning) return;
+            if (spinTimeoutId) { clearTimeout(spinTimeoutId); spinTimeoutId = null; }
+            const centerOffset = (visibleWindowWidth / 2) - (itemWidth / 2);
+            const targetX = -(pendingTargetIndex * itemWidth) + centerOffset;
+            strip.style.transition = 'none'; strip.style.transform = `translateX(${targetX}px)`;
+            finalizeWinner(pendingWinner, pendingTargetIndex);
+        });
+
+        // Recalcular el tamaño si se cambia el tamaño de la ventana
+        window.addEventListener('resize', () => {
+            if (els.rouletteSection.classList.contains('visible-roulette')) resetRoulettePosition();
+            if (els.customSection.classList.contains('visible')) updateChemistryLines();
+        });
+
+        // --- SISTEMA DE PANELES Y TRANSICIONES ---
+        function switchView(hideEl, showEl) {
+            hideEl.classList.remove('visible', 'visible-roster', 'visible-roulette', 'visible-team');
+            setTimeout(() => {
+                hideEl.style.display = 'none';
+                showEl.style.display = 'flex';
+                setTimeout(() => {
+                    const cls = showEl.id.includes('roster') ? 'visible-roster' : 
+                               showEl.id.includes('roulette') ? 'visible-roulette' : 
+                               showEl.id.includes('team') ? 'visible-team' : 'visible';
+                    showEl.classList.add(cls);
+                }, 50);
+            }, 800);
+        }
+
+        // --- BOTÓN REINICIO GENERAL ---
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            els.sidebar.classList.remove('visible');
+            els.teamsSection.classList.remove('visible-team');
+            els.finalControls.classList.remove('visible');
+
+            currentSelectedPlayer = null; activePlayers = []; unpickedIds = [];
+            teamAIds = []; teamBIds = [];
+            isSpinning = false;
+            if (spinTimeoutId) { clearTimeout(spinTimeoutId); spinTimeoutId = null; }
+            btnSpin.disabled = false; btnSkip.disabled = true;
+            resultImg.style.opacity = '0'; resultName.style.opacity = '0';
+
+            setTimeout(() => {
+                els.teamsSection.style.display = 'none';
+                els.finalControls.style.display = 'none';
+                els.modeSelection.style.display = 'flex';
+                setTimeout(() => els.modeSelection.classList.add('visible'), 50);
+            }, 800);
+        });
+
+        // --- LÓGICA DE ESTADÍSTICAS (PANEL) ---
+        window.openStats = function(id) {
+            const p = allPlayers.find(x => x.id == id);
+            if(!p) return;
+            document.getElementById('sidebar-img').src = p.img;
+            document.getElementById('sidebar-name').innerText = p.name;
+            
+            ['tiro', 'pase', 'regate', 'efectividad'].forEach(stat => {
+                const votes = p.ratings[stat] || [];
+                const avg = votes.length ? votes.reduce((a,b)=>a+b,0)/votes.length : 0;
+                document.getElementById(`stat-${stat}-avg`).innerText = avg.toFixed(1);
+                
+                const stars = document.getElementById(`stars-${stat}`).querySelectorAll('span');
+                stars.forEach(s => {
+                    s.classList.toggle('lit', parseInt(s.dataset.value) <= Math.round(avg));
+                });
+            });
+            els.sidebar.classList.add('visible');
+        };
+        document.getElementById('btn-close-sidebar').addEventListener('click', () => els.sidebar.classList.remove('visible'));
+    </script>
+</body>
+</html>
